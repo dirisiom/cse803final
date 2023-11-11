@@ -1,4 +1,7 @@
 import itertools
+import os.path
+
+import torch
 
 from data import *
 from models import *
@@ -6,6 +9,9 @@ from sklearn.metrics import confusion_matrix
 
 device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 print(f'Using {device}')
+
+generator = torch.Generator()
+generator.manual_seed(57)
 
 
 def train_model(m, c, o, train_l, epochs=10):
@@ -25,7 +31,7 @@ def train_model(m, c, o, train_l, epochs=10):
             if counter % 25 == 0:
                 print(counter)
             counter += 1
-        print(f'Epoch {e+1}/{epochs}, Loss: {running / len(train_l)}')
+        print(f'Epoch {e + 1}/{epochs}, Loss: {running / len(train_l)}')
     print('Done training!')
 
 
@@ -44,11 +50,12 @@ def plot_results(m, loader):
             correct += (pred == labels).sum().item()
         acc = 100 * correct / total
         print(f'Accuracy: {acc}')
+        # TODO: fix
         all_preds.extend(pred.view(-1).cpu().numpy())
         all_labels.extend(labels.view(-1).cpu().numpy())
     # Confusion Matrix
     cm = confusion_matrix(all_labels, all_preds)
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(20, 20))
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title('Confusion Matrix')
     plt.colorbar()
@@ -71,14 +78,14 @@ def plot_results(m, loader):
     plt.show()
 
 
-def main(train=False):
+def main(train_p=False, results=False):
     data = fetch_data()
 
     # Split dataset
     train_size = int(0.7 * len(data))
     val_size = int(.15 * len(data))
     test_size = len(data) - (train_size + val_size)
-    train, val, test = random_split(data, [train_size, val_size, test_size])
+    train, val, test = random_split(data, [train_size, val_size, test_size], generator=generator)
 
     # Data Loaders
     batch_size = 32
@@ -89,19 +96,28 @@ def main(train=False):
     # TODO: this will likely need to change in order to accommodate different model types
     model = ASLCNN(len(data.classes)).to(device)
 
-    crit = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=.001)
+    if train_p or not os.path.isfile('./data/asl_classifier_state_dict.pth'):
+        crit = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(), lr=.001)
 
+        print('start training')
+        train_model(model, crit, optimizer, train_loader)
+        plot_results(model, val_loader)
 
-    print('start training')
-    train_model(model, crit, optimizer, train_loader)
-    plot_results(model, val_loader)
+        # Saving Model State Dictionary
+        state_dict_path = 'data/asl_classifier_state_dict.pth'
+        torch.save(model.state_dict(), state_dict_path)
+        print(f"State dictionary saved to {state_dict_path}")
 
-    # Saving Model State Dictionary
-    state_dict_path = 'data/asl_classifier_state_dict.pth'
-    torch.save(model.state_dict(), state_dict_path)
-    print(f"State dictionary saved to {state_dict_path}")
+    if results:
+        model.load_state_dict(torch.load('data/asl_classifier_state_dict.pth'))
+        model.eval()
+        plot_results(model, train_loader)
+        plot_results(model, val_loader)
+        plot_results(model, test_loader)
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    # main(train_p=True, results=True)
+    main(results=True)
