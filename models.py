@@ -16,7 +16,7 @@ class ASLCNN(nn.Module):
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
         # This might be wrong idc
         self.fc1 = nn.Linear(128 * 25 * 25, 512)
-        self.fc2 = nn.Linear(512, classes)
+        self.fc2 = nn.Linear(512, 29)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.dropout = nn.Dropout(0.5)
         self.relu = nn.ReLU()
