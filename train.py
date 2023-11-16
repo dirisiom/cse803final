@@ -48,11 +48,10 @@ def plot_results(m, loader):
             _, pred = torch.max(out.data, 1)
             total += labels.size(0)
             correct += (pred == labels).sum().item()
+            all_preds.extend(pred.view(-1).cpu().numpy())
+            all_labels.extend(labels.view(-1).cpu().numpy())
         acc = 100 * correct / total
         print(f'Accuracy: {acc}')
-        # TODO: fix
-        all_preds.extend(pred.view(-1).cpu().numpy())
-        all_labels.extend(labels.view(-1).cpu().numpy())
     # Confusion Matrix
     cm = confusion_matrix(all_labels, all_preds)
     plt.figure(figsize=(20, 20))
