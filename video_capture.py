@@ -61,6 +61,8 @@ def main():
                 hand_region = crop_hand_region(frame, hand_landmarks, target_size=target_size)
 
                 if hand_region is not None:
+                    # TODO: Added this for testing; it seems to always show a blank square?
+                    cv2.imshow('cropped', hand_region)
                     # Convert hand region to a PyTorch tensor
                     hand_region = torch.from_numpy(hand_region.transpose((2, 0, 1))).float()
 
