@@ -5,20 +5,34 @@ import mediapipe as mp
 from models import ASLCNN
 
 # Class labels for the ASL signs
-class_labels = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "SPACE", "DELETE", "NOTHING"]
+class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'SPACE',
+                'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+
+cv2.namedWindow('Hand Detection and Classification', cv2.WINDOW_NORMAL)
+cv2.namedWindow('Cropped Hand Region', cv2.WINDOW_NORMAL)
+frame_count = 0
 
 
-def crop_hand_region(frame, hand_landmarks, target_size=(200, 200)):
+def crop_hand_region(frame, hand_landmarks, target_size=(200, 200), padding=20):
     try:
-        points = [(lm.x, lm.y) for lm in hand_landmarks.landmark]
-        x, y, w, h = cv2.boundingRect(np.float32(points))
-        hand_region = frame[y:y + h, x:x + w]
+        # Extract the bounding box from the hand landmarks
+        points = np.array([(int(lm.x * frame.shape[1]), int(lm.y * frame.shape[0])) for lm in hand_landmarks.landmark])
+        bBox = cv2.boundingRect(points)
 
-        # Resize and normalize the hand region
-        hand_region = cv2.resize(hand_region, target_size)
-        hand_region = hand_region.astype(np.float32) / 255.0
+        if bBox[2] > 0 and bBox[3] > 0:
+            x, y, w, h = bBox
+            x -= padding
+            y -= padding
+            w += 2 * padding
+            h += 2 * padding
 
-        return hand_region
+            # Crop and resize the hand region
+            hand_region = frame[max(0, y):min(frame.shape[0], y + h), max(0, x):min(frame.shape[1], x + w)]
+            hand_region = cv2.resize(hand_region, target_size)
+
+            return hand_region
+        else:
+            return None
     except Exception as e:
         print(f"Error in crop_hand_region: {e}")
         return None
@@ -31,7 +45,7 @@ def main():
 
     # Load the ASL classification model created in models.py
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = ASLCNN(29).to(device)
+    model = ASLCNN(len(class_labels)).to(device)
     model_path = 'data/asl_classifier_state_dict.pth'
     model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
     model.eval()
@@ -42,44 +56,55 @@ def main():
     # Hand region target size = 200 x 200 pixels
     target_size = (200, 200)
 
+    global frame_count
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Convert the frame to RGB for MediaPipe and process the frame with MediaPipe Hands
+        # Convert the frame to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Process the frame with MediaPipe Hands
         results = hands.process(rgb_frame)
 
         # Check if hands are detected
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 # Draw landmarks on hand
-                mp.solutions.drawing_utils.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                # mp.solutions.drawing_utils.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-                # Crop the region around the hand and resize
-                hand_region = crop_hand_region(frame, hand_landmarks, target_size=target_size)
+                # Capture an image every 5 frames
+                if frame_count % 20 == 0:
+                    hand_region = crop_hand_region(frame, hand_landmarks, target_size=target_size)
 
-                if hand_region is not None:
-                    # TODO: Added this for testing; it seems to always show a blank square?
-                    cv2.imshow('cropped', hand_region)
-                    # Convert hand region to a PyTorch tensor
-                    hand_region = torch.from_numpy(hand_region.transpose((2, 0, 1))).float()
+                    if hand_region is not None:
+                        cv2.imshow('Cropped Hand Region', hand_region)
 
-                    # Forward pass through the ASL classification model
-                    with torch.no_grad():
-                        out = model(hand_region.unsqueeze(0).to(device))
+                        # Convert the cropped hand region to a PyTorch tensor and normalize
+                        hand_region_tensor = torch.from_numpy(hand_region.transpose((2, 0, 1))).float() / 255.0
 
-                    # Get the predicted class
-                    _, pred = torch.max(out.data, 1)
-                    print("Detected ASL Sign:", class_labels[pred.item()])
+                        # Forward pass through the ASL classification model
+                        with torch.no_grad():
+                            out = model(hand_region_tensor.unsqueeze(0).to(device))
 
+                        # Print the raw output from the model
+                        print("Raw Model Output:", out)
+
+                        # Get the predicted class
+                        _, pred = torch.max(out.data, 1)
+                        detected_sign = class_labels[pred.item()]
+                        print("Detected ASL Sign:", detected_sign)
+
+        # Display the original frame with landmarks
         cv2.imshow('Hand Detection and Classification', frame)
 
         if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
             break
 
-    # Close the windows
+        frame_count += 1
+
     cap.release()
     cv2.destroyAllWindows()
 

@@ -11,7 +11,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 print(f'Using {device}')
 
 generator = torch.Generator()
-generator.manual_seed(57)
+generator.manual_seed(5757)
 
 
 def train_model(m, c, o, train_l, epochs=10):
@@ -28,7 +28,7 @@ def train_model(m, c, o, train_l, epochs=10):
             loss.backward()
             o.step()
             running += loss
-            if counter % 25 == 0:
+            if counter % 100 == 0:
                 print(counter)
             counter += 1
         print(f'Epoch {e + 1}/{epochs}, Loss: {running / len(train_l)}')
@@ -111,12 +111,12 @@ def main(train_p=False, results=False):
     if results:
         model.load_state_dict(torch.load('data/asl_classifier_state_dict.pth'))
         model.eval()
-        plot_results(model, train_loader)
-        plot_results(model, val_loader)
+        # plot_results(model, train_loader)
+        # plot_results(model, val_loader)
         plot_results(model, test_loader)
 
 
 if __name__ == '__main__':
     # main()
-    # main(train_p=True, results=True)
-    main(results=True)
+    main(train_p=True, results=True)
+    # main(results=True)
