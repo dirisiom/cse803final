@@ -97,7 +97,7 @@ def main(train_p=False, results=False):
 
     if train_p or not os.path.isfile('./data/asl_classifier_state_dict.pth'):
         crit = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.parameters(), lr=.001)
+        optimizer = optim.Adam(model.parameters(), lr=.003)
 
         print('start training')
         train_model(model, crit, optimizer, train_loader)
