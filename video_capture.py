@@ -3,6 +3,8 @@ import torch
 import numpy as np
 import mediapipe as mp
 from models import ASLCNN
+from PIL import Image
+from data import transform
 
 # Class labels for the ASL signs
 class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'SPACE',
@@ -75,15 +77,18 @@ def main():
                 # Draw landmarks on hand
                 # mp.solutions.drawing_utils.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-                # Capture an image every 5 frames
+                # Capture an image every 20 frames
                 if frame_count % 20 == 0:
-                    hand_region = crop_hand_region(frame, hand_landmarks, target_size=target_size)
+                    hand_region = crop_hand_region(frame, hand_landmarks, target_size=target_size, padding=50)
 
                     if hand_region is not None:
                         cv2.imshow('Cropped Hand Region', hand_region)
 
+                        hand_pil = Image.fromarray(cv2.cvtColor(hand_region, cv2.COLOR_BGR2RGB))
+                        hand_region_tensor = transform(hand_pil)
+
                         # Convert the cropped hand region to a PyTorch tensor and normalize
-                        hand_region_tensor = torch.from_numpy(hand_region.transpose((2, 0, 1))).float() / 255.0
+                        # hand_region_tensor = torch.from_numpy(hand_region.transpose((2, 0, 1))).float() / 255.0
 
                         # Forward pass through the ASL classification model
                         with torch.no_grad():
