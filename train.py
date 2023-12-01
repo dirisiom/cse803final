@@ -6,6 +6,7 @@ import torch
 from data import *
 from models import *
 from sklearn.metrics import confusion_matrix
+from tqdm import tqdm
 
 device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 print(f'Using {device}')
@@ -18,9 +19,8 @@ def train_model(m, c, o, train_l, epochs=10):
     for e in range(epochs):
         m.train()
         running = 0.0
-        print('inner loop now')
-        counter = 0
-        for inputs, labels in train_l:
+        # print('inner loop now')
+        for inputs, labels in tqdm(train_l):
             inputs, labels = inputs.to(device), labels.to(device)
             o.zero_grad()
             out = m(inputs)
@@ -28,9 +28,6 @@ def train_model(m, c, o, train_l, epochs=10):
             loss.backward()
             o.step()
             running += loss
-            if counter % 100 == 0:
-                print(counter)
-            counter += 1
         print(f'Epoch {e + 1}/{epochs}, Loss: {running / len(train_l)}')
     print('Done training!')
 

@@ -18,6 +18,7 @@ transform = transforms.Compose([
 
 
 def fetch_data():
-    path = './data/asl_images'
+    # path = './data/asl_images'
+    path = '/Users/dattm/Downloads/asl_big_set/ASL_Alphabet_Dataset'
     dset = datasets.ImageFolder(root=path, transform=transform)
     return dset
