@@ -7,8 +7,9 @@ from PIL import Image
 from data import transform
 
 # Class labels for the ASL signs
-class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'SPACE',
-                'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+# class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'SPACE',
+#                 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'space']
 
 cv2.namedWindow('Hand Detection and Classification', cv2.WINDOW_NORMAL)
 cv2.namedWindow('Cropped Hand Region', cv2.WINDOW_NORMAL)
