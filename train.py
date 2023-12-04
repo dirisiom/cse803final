@@ -15,8 +15,9 @@ generator = torch.Generator()
 generator.manual_seed(5757)
 
 
-def train_model(m, c, o, train_l, epochs=10):
+def train_model(m, c, o, train_l, val_l, epochs=10):
     losses = []
+    v_losses = []
     for e in range(epochs):
         m.train()
         running = 0.0
@@ -32,9 +33,22 @@ def train_model(m, c, o, train_l, epochs=10):
         # Get average loss per batch
         e_loss = running / len(train_l)
         losses.append(e_loss)
+        print()
         print(f'Epoch {e + 1}/{epochs}, Loss: {e_loss}')
+
+        m.eval()
+        running_v = 0.0
+        with torch.no_grad():
+            for i, l in tqdm(val_l):
+                i, l = i.to(device), l.to(device)
+                out = m(i)
+                running_v += c(out, l).item()
+        e_v_loss = running_v / len(val_l)
+        v_losses.append(e_v_loss)
+        print(f'Epoch {e + 1}/{epochs}, Validation Loss: {e_v_loss}')
+
     print('Done training!')
-    return losses
+    return losses, v_losses
 
 
 def plot_results(m, loader, val=True):
@@ -81,9 +95,10 @@ def plot_results(m, loader, val=True):
     plt.show()
 
 
-def plot_loss(losses):
+def plot_loss(t_losses, v_losses):
     plt.figure(figsize=(10,6))
-    plt.plot(losses, label='Training Loss')
+    plt.plot(t_losses, label='Training Loss')
+    plt.plot(v_losses, label='Validation Loss')
     plt.title('Training Loss Over Epochs')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
@@ -115,12 +130,12 @@ def main(train_p=False, results=False):
         optimizer = optim.Adam(model.parameters(), lr=.003)
 
         print('start training')
-        losses = train_model(model, crit, optimizer, train_loader)
+        losses, v_losses = train_model(model, crit, optimizer, train_loader, val_loader)
         # Saving Model State Dictionary
         state_dict_path = 'data/asl_classifier_state_dict.pth'
         torch.save(model.state_dict(), state_dict_path)
         print(f"State dictionary saved to {state_dict_path}")
-        plot_loss(losses)
+        plot_loss(losses, v_losses)
 
         # plot_results(model, val_loader)
 
