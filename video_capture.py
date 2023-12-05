@@ -1,18 +1,24 @@
 import cv2
 import torch
-import time
-import pyttsx3
 import numpy as np
 import mediapipe as mp
 from models import ASLCNN
 from PIL import Image, ImageTk
 import tkinter as tk
-from data import transform as data_transform
+from tkinter import scrolledtext
+import pyttsx3
+from gtts import gTTS
+import os
+import time
+from torchvision import transforms
 
 # Class labels for the ASL signs
 class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
                 'V', 'W', 'X', 'Y', 'Z', 'space']
 
+def data_transform(image):
+    tensor_transform = transforms.ToTensor()
+    return tensor_transform(image)
 
 class ASLApp:
     def __init__(self, master):
@@ -20,26 +26,26 @@ class ASLApp:
         self.master.title("ASL Sign Detection and Classification")
         self.detected_sign = tk.StringVar()
         self.detected_sign.set("")
+        self.is_space_pressed = False
+        self.sentence = ""
 
         # Create labels
         self.label_current_sign = tk.Label(master, text="Current ASL Sign:", font=('Helvetica', 14), padx=10, pady=10)
         self.label_current_sign.grid(row=0, column=0)
-        self.label_detected_sign = tk.Label(master, textvariable=self.detected_sign, font=('Helvetica', 14), padx=10,
-                                            pady=10)
-        self.label_detected_sign.grid(row=0, column=1)
+
+        # Create label for generated sentence
+        self.label_generated_sentence = tk.Label(master, text="Generated Sentence:", font=('Helvetica', 14), padx=10,
+                                                 pady=10)
+        self.label_generated_sentence.grid(row=0, column=2)
 
         # Create Speak button
-        self.btn_speak = tk.Button(master, text="Speak", command=self.speak_current_sign, font=('Helvetica', 12),
-                                   padx=10, pady=10)
-        self.btn_speak.grid(row=0, column=2, pady=20)  # Moved to column 2
+        self.btn_speak = tk.Button(master, text="Speak", command=self.speak_generated_sentence, font=('Helvetica', 12),
+                                   padx=10, pady=10, bg='blue', fg='white')  # Set background color to blue
+        self.btn_speak.grid(row=0, column=3)
 
-        # Create canvas for camera feed
-        self.canvas = tk.Canvas(master, width=640, height=480)
-        self.canvas.grid(row=1, column=0, columnspan=3)
-
-        # Create a StringVar for detected sign
-        self.detected_sign = tk.StringVar()
-        self.detected_sign.set("")
+        # Create scrolled text box for the sentence
+        self.sentence_text = scrolledtext.ScrolledText(master, wrap=tk.WORD, width=40, height=10)
+        self.sentence_text.grid(row=1, column=0, columnspan=4, pady=10, padx=(10, 20), sticky=tk.E)
 
         # Initialize text-to-speech engine
         self.engine = pyttsx3.init()
@@ -60,13 +66,29 @@ class ASLApp:
         self.frame_count = 0
         self.detected_sign.set("No sign detected")
 
+        # Bind the space bar to the space_pressed method
+        self.master.bind("<space>", self.space_pressed)
+
+        # Create canvas for camera feed
+        self.canvas = tk.Canvas(master, width=640, height=480)
+        self.canvas.grid(row=2, column=0, columnspan=4)
+
         # Start the update loop
         self.update()
 
-    def speak_current_sign(self):
-        detected_sign = self.detected_sign.get()
-        if detected_sign:
-            self.text_to_speech(detected_sign)
+    def speak_generated_sentence(self):
+        sentence = self.sentence_text.get("1.0", tk.END).strip()
+        if sentence:
+            self.sentence = sentence
+            self.text_to_speech()
+            self.sentence_text.delete("1.0", tk.END)
+
+    def space_pressed(self, event):
+        if self.detected_sign.get():
+            # Replace 'space' with actual space
+            sign = self.detected_sign.get() if self.detected_sign.get() != 'space' else ' '
+            self.sentence_text.insert(tk.END, sign)
+            self.is_space_pressed = True
 
     def crop_hand_region(self, frame, hand_landmarks, target_size=(200, 200), padding=20):
         try:
@@ -93,8 +115,8 @@ class ASLApp:
             print(f"Error in crop_hand_region: {e}")
             return None
 
-    def text_to_speech(self, text):
-        self.engine.say(text)
+    def text_to_speech(self):
+        self.engine.say(self.sentence)
         self.engine.runAndWait()
 
     def update(self):
@@ -140,20 +162,19 @@ class ASLApp:
             img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             img_tk = ImageTk.PhotoImage(img)
 
-            # Ensure that the image reference is retained
             self.canvas.img_tk = img_tk
-
-            # Update the canvas image
             self.canvas.config(width=img_tk.width(), height=img_tk.height())
             self.canvas.create_image(0, 0, anchor=tk.NW, image=img_tk)
+  
+            if self.is_space_pressed:
+                self.is_space_pressed = False
+                self.detected_sign.set("")
 
-            # Update every 10 milliseconds
             self.master.after(10, self.update)
 
         else:
             # Release the camera when the window is closed
             self.cap.release()
-
 
 # Create the main window
 root = tk.Tk()
