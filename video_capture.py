@@ -16,8 +16,10 @@ from models import ASLCNN
 class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
                 'V', 'W', 'X', 'Y', 'Z', 'space']
 
+
 def data_transform(image):
     return transform(image)
+
 
 class ASLApp:
     def __init__(self, master):
@@ -67,6 +69,8 @@ class ASLApp:
 
         # Bind the space bar to the space_pressed method
         self.master.bind("<space>", self.space_pressed)
+        # Bind the backspace key to the backspace_pressed method
+        self.master.bind("<BackSpace>", self.backspace_pressed)
 
         # Create canvas for camera feed
         self.canvas = tk.Canvas(master, width=640, height=480)
@@ -81,6 +85,7 @@ class ASLApp:
             self.sentence = sentence
             self.text_to_speech()
             self.sentence_text.delete("1.0", tk.END)
+            self.label_current_sign.focus_set()
 
     def space_pressed(self, event):
         if self.detected_sign.get():
@@ -88,6 +93,14 @@ class ASLApp:
             sign = self.detected_sign.get() if self.detected_sign.get() != 'space' else ' '
             self.sentence_text.insert(tk.END, sign)
             self.is_space_pressed = True
+            self.label_current_sign.focus_set()
+
+    def backspace_pressed(self, event):
+        current_text = self.sentence_text.get("1.0", tk.END).strip()
+        if current_text:
+            # Delete the last character
+            self.sentence_text.delete("end-2c", tk.END)
+            self.is_space_pressed = False
 
     def crop_hand_region(self, frame, hand_landmarks, target_size=(200, 200), padding=20):
         try:
@@ -137,8 +150,6 @@ class ASLApp:
 
                         if hand_region is not None:
                             hand_pil = Image.fromarray(cv2.cvtColor(hand_region, cv2.COLOR_BGR2RGB))
-                            # plt.imshow(hand_pil)
-                            # plt.show()
                             hand_region_tensor = data_transform(hand_pil).unsqueeze(0).to(self.device)
 
                             # Forward pass through the ASL classification model
@@ -148,7 +159,6 @@ class ASLApp:
                             # Get the predicted class
                             _, pred = torch.max(out.data, 1)
                             detected_sign = class_labels[pred.item()]
-                            print(detected_sign)
 
                             # Update the last detection time
                             self.last_detection_time = time.time()
@@ -167,7 +177,7 @@ class ASLApp:
             self.canvas.img_tk = img_tk
             self.canvas.config(width=img_tk.width(), height=img_tk.height())
             self.canvas.create_image(0, 0, anchor=tk.NW, image=img_tk)
-  
+
             if self.is_space_pressed:
                 self.is_space_pressed = False
                 self.detected_sign.set("")
@@ -177,6 +187,7 @@ class ASLApp:
         else:
             # Release the camera when the window is closed
             self.cap.release()
+
 
 # Create the main window
 root = tk.Tk()
