@@ -51,10 +51,15 @@ def train_model(m, c, o, train_l, val_l, epochs=10):
     return losses, v_losses
 
 
-def plot_results(m, loader, val=True):
+def plot_results(m, loader, title):
     m.eval()
     all_preds = []
     all_labels = []
+    hard_labels_list = ['A', 'E', 'I', 'J', 'N', 'M', 'S', 'T']
+    hard_preds = []
+    hard_labels = []
+    label_to_idx = {label: idx for idx, label in enumerate(loader.dataset.dataset.classes)}
+    hard_label_indices = {label_to_idx[label] for label in hard_labels_list if label in label_to_idx}
     with torch.no_grad():
         correct = 0
         total = 0
@@ -66,18 +71,30 @@ def plot_results(m, loader, val=True):
             correct += (pred == labels).sum().item()
             all_preds.extend(pred.view(-1).cpu().numpy())
             all_labels.extend(labels.view(-1).cpu().numpy())
+
+            for p, l in zip(pred.view(-1).cpu().numpy(), labels.view(-1).cpu().numpy()):
+                if l in hard_label_indices:
+                    if p in hard_label_indices:
+                        hard_labels.append(l)
+                        hard_preds.append(p)
+
         acc = 100 * correct / total
         print(f'Accuracy: {acc}')
-    # Confusion Matrix
-    cm = confusion_matrix(all_labels, all_preds)
-    plt.figure(figsize=(21, 21))
+    plot_cm(all_labels, all_preds, loader.dataset.dataset.classes, 'General', title)
+    plot_cm(hard_labels, hard_preds, hard_labels_list, 'Hard', title, hard=True)
+
+
+def plot_cm(true, pred, classes, title, m_title, hard=False):
+    cm = confusion_matrix(true, pred)
+    if not hard:
+        plt.figure(figsize=(21, 21))
+    else:
+        plt.figure(figsize=(7, 7))
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    title = 'Validation Data' if val else 'Test Data'
-    plt.title(f'Confusion Matrix, {title}')
-    plt.colorbar()
-    tick_marks = np.arange(len(loader.dataset.dataset.classes))
-    plt.xticks(tick_marks, loader.dataset.dataset.classes, rotation=45)
-    plt.yticks(tick_marks, loader.dataset.dataset.classes)
+    plt.title(f'{title} Confusion Matrix, {m_title} Data')
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
 
     # Normalize the confusion matrix
     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
@@ -87,13 +104,10 @@ def plot_results(m, loader, val=True):
         plt.text(j, i, "{:0.4f}".format(cm[i, j]),
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
-
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.tight_layout()
-    plt.subplots_adjust(left=0.19)
     plt.show()
-
 
 def plot_loss(t_losses, v_losses):
     plt.figure(figsize=(10,6))
@@ -142,12 +156,12 @@ def main(train_p=False, results=False):
     if results:
         model.load_state_dict(torch.load('data/asl_classifier_state_dict.pth'))
         model.eval()
-        # plot_results(model, train_loader)
-        plot_results(model, val_loader)
-        plot_results(model, test_loader, val=False)
+        plot_results(model, train_loader, 'Train')
+        # plot_results(model, val_loader, 'Validation')
+        plot_results(model, test_loader, 'Test')
 
 
 if __name__ == '__main__':
     # main()
-    main(train_p=True, results=True)
-    # main(results=True)
+    # main(train_p=True, results=True)
+    main(results=True)
