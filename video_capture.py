@@ -1,24 +1,23 @@
-import cv2
-import torch
-import numpy as np
-import mediapipe as mp
-from models import ASLCNN
-from PIL import Image, ImageTk
+import time
 import tkinter as tk
 from tkinter import scrolledtext
+
+import cv2
+import mediapipe as mp
+import numpy as np
 import pyttsx3
-from gtts import gTTS
-import os
-import time
-from torchvision import transforms
+import torch
+from PIL import Image, ImageTk
+
+from data import transform
+from models import ASLCNN
 
 # Class labels for the ASL signs
 class_labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
                 'V', 'W', 'X', 'Y', 'Z', 'space']
 
 def data_transform(image):
-    tensor_transform = transforms.ToTensor()
-    return tensor_transform(image)
+    return transform(image)
 
 class ASLApp:
     def __init__(self, master):
@@ -55,7 +54,7 @@ class ASLApp:
         self.hands = self.mp_hands.Hands()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = ASLCNN(len(class_labels)).to(self.device)
-        model_path = 'data/asl_classifier_state_dict.pth'
+        model_path = 'data/asl_classifier_state_dict_great.pth'
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         self.model.eval()
 
@@ -134,10 +133,12 @@ class ASLApp:
                     # Capture an image every 20 frames
                     if self.frame_count % 20 == 0:
                         hand_region = self.crop_hand_region(frame, hand_landmarks, target_size=self.target_size,
-                                                            padding=100)
+                                                            padding=50)
 
                         if hand_region is not None:
                             hand_pil = Image.fromarray(cv2.cvtColor(hand_region, cv2.COLOR_BGR2RGB))
+                            # plt.imshow(hand_pil)
+                            # plt.show()
                             hand_region_tensor = data_transform(hand_pil).unsqueeze(0).to(self.device)
 
                             # Forward pass through the ASL classification model
@@ -147,6 +148,7 @@ class ASLApp:
                             # Get the predicted class
                             _, pred = torch.max(out.data, 1)
                             detected_sign = class_labels[pred.item()]
+                            print(detected_sign)
 
                             # Update the last detection time
                             self.last_detection_time = time.time()
