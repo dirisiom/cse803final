@@ -15,7 +15,9 @@ generator = torch.Generator()
 generator.manual_seed(5757)
 
 
-def train_model(m, c, o, train_l, epochs=10):
+def train_model(m, c, o, train_l, val_l, epochs=10):
+    losses = []
+    v_losses = []
     for e in range(epochs):
         m.train()
         running = 0.0
@@ -27,19 +29,36 @@ def train_model(m, c, o, train_l, epochs=10):
             loss = c(out, labels)
             loss.backward()
             o.step()
-            running += loss
-        print(f'Epoch {e + 1}/{epochs}, Loss: {running / len(train_l)}')
+            running += loss.item()
+        # Get average loss per batch
+        e_loss = running / len(train_l)
+        losses.append(e_loss)
+        print()
+        print(f'Epoch {e + 1}/{epochs}, Loss: {e_loss}')
+
+        m.eval()
+        running_v = 0.0
+        with torch.no_grad():
+            for i, l in tqdm(val_l):
+                i, l = i.to(device), l.to(device)
+                out = m(i)
+                running_v += c(out, l).item()
+        e_v_loss = running_v / len(val_l)
+        v_losses.append(e_v_loss)
+        print(f'Epoch {e + 1}/{epochs}, Validation Loss: {e_v_loss}')
+
     print('Done training!')
+    return losses, v_losses
 
 
-def plot_results(m, loader):
+def plot_results(m, loader, val=True):
     m.eval()
     all_preds = []
     all_labels = []
     with torch.no_grad():
         correct = 0
         total = 0
-        for images, labels in loader:
+        for images, labels in tqdm(loader):
             images, labels = images.to(device), labels.to(device)
             out = m(images)
             _, pred = torch.max(out.data, 1)
@@ -51,9 +70,10 @@ def plot_results(m, loader):
         print(f'Accuracy: {acc}')
     # Confusion Matrix
     cm = confusion_matrix(all_labels, all_preds)
-    plt.figure(figsize=(20, 20))
+    plt.figure(figsize=(21, 21))
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title('Confusion Matrix')
+    title = 'Validation Data' if val else 'Test Data'
+    plt.title(f'Confusion Matrix, {title}')
     plt.colorbar()
     tick_marks = np.arange(len(loader.dataset.dataset.classes))
     plt.xticks(tick_marks, loader.dataset.dataset.classes, rotation=45)
@@ -68,10 +88,24 @@ def plot_results(m, loader):
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
 
-    plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+    plt.tight_layout()
+    plt.subplots_adjust(left=0.19)
     plt.show()
+
+
+def plot_loss(t_losses, v_losses):
+    plt.figure(figsize=(10,6))
+    plt.plot(t_losses, label='Training Loss')
+    plt.plot(v_losses, label='Validation Loss')
+    plt.title('Training Loss Over Epochs')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
+    plt.tight_layout()
+    plt.savefig('./trainlosses.png')
 
 
 def main(train_p=False, results=False):
@@ -89,7 +123,6 @@ def main(train_p=False, results=False):
     val_loader = DataLoader(val, batch_size=batch_size)
     test_loader = DataLoader(test, batch_size=batch_size)
 
-    # TODO: this will likely need to change in order to accommodate different model types
     model = ASLCNN(len(data.classes)).to(device)
 
     if train_p or not os.path.isfile('./data/asl_classifier_state_dict.pth'):
@@ -97,20 +130,21 @@ def main(train_p=False, results=False):
         optimizer = optim.Adam(model.parameters(), lr=.003)
 
         print('start training')
-        train_model(model, crit, optimizer, train_loader)
-        plot_results(model, val_loader)
-
+        losses, v_losses = train_model(model, crit, optimizer, train_loader, val_loader)
         # Saving Model State Dictionary
         state_dict_path = 'data/asl_classifier_state_dict.pth'
         torch.save(model.state_dict(), state_dict_path)
         print(f"State dictionary saved to {state_dict_path}")
+        plot_loss(losses, v_losses)
+
+        # plot_results(model, val_loader)
 
     if results:
         model.load_state_dict(torch.load('data/asl_classifier_state_dict.pth'))
         model.eval()
         # plot_results(model, train_loader)
-        # plot_results(model, val_loader)
-        plot_results(model, test_loader)
+        plot_results(model, val_loader)
+        plot_results(model, test_loader, val=False)
 
 
 if __name__ == '__main__':

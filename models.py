@@ -36,9 +36,7 @@ class ASLCNN(nn.Module):
         self.dropout = nn.Dropout(0.5)
 
         # Fully connected layer
-        # Note: The input features to this layer depend on the output size of your conv5 layer.
-        # You may need to adjust this based on your input image size.
-        self.fc = nn.Linear(512 * 1 * 1, classes)  # Adjust the input features accordingly
+        self.fc = nn.Linear(512, classes)
 
     def forward(self, x):
         # Layer 1

@@ -134,7 +134,7 @@ class ASLApp:
                     # Capture an image every 20 frames
                     if self.frame_count % 20 == 0:
                         hand_region = self.crop_hand_region(frame, hand_landmarks, target_size=self.target_size,
-                                                            padding=50)
+                                                            padding=100)
 
                         if hand_region is not None:
                             hand_pil = Image.fromarray(cv2.cvtColor(hand_region, cv2.COLOR_BGR2RGB))
