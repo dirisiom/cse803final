@@ -41,22 +41,22 @@ class ASLCNN(nn.Module):
     def forward(self, x):
         # Layer 1
         x = self.pool(self.leaky_relu(self.bn1(self.conv1(x))))
-        identity = self.residual1(x)  # Match channels and dimensions
+        identity = self.residual1(x)
         x = x + identity
 
         # Layer 2
         x = self.pool(self.leaky_relu(self.bn2(self.conv2(x))))
-        identity = self.residual2(x)  # Match channels and dimensions
+        identity = self.residual2(x)
         x = x + identity
 
         # Layer 3
         x = self.pool(self.leaky_relu(self.bn3(self.conv3(x))))
-        identity = self.residual3(x)  # Match channels and dimensions
+        identity = self.residual3(x)
         x = x + identity
 
         # Layer 4
         x = self.pool(self.leaky_relu(self.bn4(self.conv4(x))))
-        identity = self.residual4(x)  # Match channels and dimensions
+        identity = self.residual4(x)
         x = x + identity
 
         # Layer 5

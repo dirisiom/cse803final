@@ -108,8 +108,9 @@ def plot_cm(true, pred, classes, title, m_title, hard=False):
     plt.tight_layout()
     plt.show()
 
+
 def plot_loss(t_losses, v_losses):
-    plt.figure(figsize=(10,6))
+    plt.figure(figsize=(10, 6))
     plt.plot(t_losses, label='Training Loss')
     plt.plot(v_losses, label='Validation Loss')
     plt.title('Training Loss Over Epochs')
@@ -144,12 +145,13 @@ def main(train_p=False, results=False):
 
         print('start training')
         losses, v_losses = train_model(model, crit, optimizer, train_loader, val_loader)
+
         # Saving Model State Dictionary
         state_dict_path = 'data/asl_classifier_state_dict.pth'
         torch.save(model.state_dict(), state_dict_path)
         print(f"State dictionary saved to {state_dict_path}")
+
         plot_loss(losses, v_losses)
-        # plot_results(model, val_loader)
 
     if results:
         model.load_state_dict(torch.load('data/asl_classifier_state_dict.pth'))
