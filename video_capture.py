@@ -170,7 +170,7 @@ class ASLApp:
                             if time.time() - self.last_detection_time <= 3:
                                 self.label_current_sign.config(text=f"Current ASL Sign: {detected_sign}")
 
-            # Display the original frame with landmarks on the canvas
+
             img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             img_tk = ImageTk.PhotoImage(img)
 

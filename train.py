@@ -21,7 +21,6 @@ def train_model(m, c, o, train_l, val_l, epochs=10):
     for e in range(epochs):
         m.train()
         running = 0.0
-        # print('inner loop now')
         for inputs, labels in tqdm(train_l):
             inputs, labels = inputs.to(device), labels.to(device)
             o.zero_grad()
@@ -150,7 +149,6 @@ def main(train_p=False, results=False):
         torch.save(model.state_dict(), state_dict_path)
         print(f"State dictionary saved to {state_dict_path}")
         plot_loss(losses, v_losses)
-
         # plot_results(model, val_loader)
 
     if results:
